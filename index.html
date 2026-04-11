@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Buscador de Calzado</title>
+
+  <style>
+    body {
+      background-color: #0b1f3a;
+      color: white;
+      font-size: 150%;
+      font-family: Arial;
+      text-align: center;
+    }
+    input, button {
+      padding: 10px;
+      margin: 5px;
+      font-size: 16px;
+    }
+    button {
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Buscador de Calzado</h1>
+
+<input type="text" id="busqueda" placeholder="Buscar por SKU">
+<button onclick="buscar()">Buscar</button>
+<button onclick="cargarDatos()">Ver todo</button>
+<button onclick="limpiar()">Limpiar</button>
+
+<h2>Resultados</h2>
+<div id="resultados"></div>
+
+<hr>
+
+<div style="display:none;">
+  <h2>Agregar</h2>
+  <input type="text" id="sku" placeholder="SKU">
+  <input type="text" id="marbete" placeholder="Marbete">
+  <br>
+  <button onclick="agregar()">+</button>
+</div>
+
+<h2>Carga masiva</h2>
+<textarea id="masivo" rows="10" cols="40" placeholder="SKU,Marbete"></textarea>
+<br>
+<button onclick="cargaMasiva()">Cargar masivo</button>
+
+<script type="module">
+
+// 🔥 PEGA TU CONFIG DE FIREBASE AQUÍ
+const firebaseConfig = {
+  apiKey: "AIzaSyBoQEvXvc_XUz7pmaLRXOl-74SRPR5e5i0",
+
+    authDomain: "buscadorcalzadoliv.firebaseapp.com",
+
+    projectId: "buscadorcalzadoliv",
+
+    storageBucket: "buscadorcalzadoliv.firebasestorage.app",
+
+    messagingSenderId: "851864036279",
+
+    appId: "1:851864036279:web:be11ccf3880f6d05a3fe32",
+
+    measurementId: "G-60KYGCY60G",
+};
+
+// Firebase imports
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const coleccion = "calzado";
+
+// ➕ AGREGAR
+window.agregar = async function() {
+  const sku = document.getElementById("sku").value;
+  const marbete = document.getElementById("marbete").value;
+
+  if (!sku || !marbete) {
+    alert("Completa todos los campos");
+    return;
+  }
+
+  await addDoc(collection(db, coleccion), { sku, marbete });
+
+  document.getElementById("sku").value = "";
+  document.getElementById("marbete").value = "";
+
+  cargarDatos();
+}
+// CARGA MASIVA
+
+
+// 🔍 BUSCAR
+window.buscar = async function() {
+  const texto = document.getElementById("busqueda").value.toLowerCase();
+  const querySnapshot = await getDocs(collection(db, coleccion));
+
+  let resultados = [];
+
+  querySnapshot.forEach((docu) => {
+    const data = docu.data();
+
+    if (data.sku.toLowerCase().includes(texto)) {
+      resultados.push({
+        id: docu.id,
+        data: data
+      });
+    }
+  });
+
+  mostrar(resultados);
+}
+
+// 📦 VER TODO
+window.cargarDatos = async function() {
+  const querySnapshot = await getDocs(collection(db, coleccion));
+
+  let lista = [];
+
+  querySnapshot.forEach((docu) => {
+    lista.push({
+      id: docu.id,
+      data: docu.data()
+    });
+  });
+
+  mostrar(lista);
+}
+
+// 🧹 LIMPIAR
+window.limpiar = function() {
+  document.getElementById("busqueda").value = "";
+  document.getElementById("resultados").innerHTML = "";
+}
+
+// ❌ ELIMINAR
+window.eliminar = async function(id) {
+  if (confirm("¿Eliminar este registro?")) {
+    await deleteDoc(doc(db, coleccion, id));
+    cargarDatos();
+  }
+}
+
+// 🖥️ MOSTRAR
+function mostrar(lista) {
+  const div = document.getElementById("resultados");
+  div.innerHTML = "";
+
+  lista.forEach(item => {
+    div.innerHTML += `
+      <p>
+        SKU: ${item.data.sku} | Marbete: ${item.data.marbete}
+        <button onclick="eliminar('${item.id}')">❌</button>
+      </p>
+    `;
+  });
+}
+
+window.cargaMasiva = async function() {
+  const texto = document.getElementById("masivo").value;
+
+  const lineas = texto.split("\n");
+
+  for (let linea of lineas) {
+    const [sku, marbete] = linea.split(",");
+
+    if (sku && marbete) {
+      await addDoc(collection(db, "calzado"), {
+        sku: sku.trim(),
+        marbete: marbete.trim()
+      });
+    }
+  }
+
+  alert("Carga masiva completada 🔥");
+  cargarDatos();
+}
+
+</script>
+
+</body>
+</html>
