@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Consulta de Calzado</title>
+
+  <style>
+    body {
+      background-color: #0b1f3a;
+      color: white;
+      font-family: Arial;
+      padding: 10px;
+    }
+
+    input {
+      width: 100%;
+      padding: 15px;
+      margin: 10px 0;
+      font-size: 18px;
+      border-radius: 10px;
+      border: none;
+    }
+
+    .card {
+      background:#13294b;
+      margin:10px 0;
+      padding:15px;
+      border-radius:10px;
+    }
+  </style>
+</head>
+<body>
+
+<h2>🔍 Buscar Calzado</h2>
+
+<input type="text" id="busqueda" placeholder="Escanea o escribe SKU">
+
+<div id="resultados"></div>
+
+<script type="module">
+
+// 🔥 PEGA TU CONFIG DE FIREBASE AQUÍ
+apiKey: "AIzaSyBoQEvXvc_XUz7pmaLRXOl-74SRPR5e5i0",
+
+    authDomain: "buscadorcalzadoliv.firebaseapp.com",
+
+    projectId: "buscadorcalzadoliv",
+
+    storageBucket: "buscadorcalzadoliv.firebasestorage.app",
+
+    messagingSenderId: "851864036279",
+
+    appId: "1:851864036279:web:be11ccf3880f6d05a3fe32",
+
+    measurementId: "G-60KYGCY60G",
+};
+
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+const coleccion = "calzado";
+
+// 🔍 BUSCAR AUTOMÁTICO
+document.getElementById("busqueda").addEventListener("input", buscar);
+
+// 🔎 FUNCIÓN BUSCAR
+async function buscar() {
+  const texto = document.getElementById("busqueda").value.toLowerCase();
+  const querySnapshot = await getDocs(collection(db, coleccion));
+
+  let resultados = [];
+
+  querySnapshot.forEach((docu) => {
+    const data = docu.data();
+
+    if (data.sku.toLowerCase().includes(texto)) {
+      resultados.push(data);
+    }
+  });
+
+  mostrar(resultados);
+}
+
+// 🖥️ MOSTRAR
+function mostrar(lista) {
+  const div = document.getElementById("resultados");
+  div.innerHTML = "";
+
+  lista.forEach(item => {
+    div.innerHTML += `
+      <div class="card">
+        <strong>SKU:</strong> ${item.sku} <br>
+        <strong>Marbete:</strong> ${item.marbete}
+      </div>
+    `;
+  });
+}
+
+// 🎯 ENFOCAR AL INICIAR
+window.onload = function() {
+  document.getElementById("busqueda").focus();
+}
+
+</script>
+
+</body>
+</html>
