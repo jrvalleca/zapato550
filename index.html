@@ -1,26 +1,38 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8">
   <title>Buscador de Calzado</title>
 
   <style>
-    body {
-      background-color: #0b1f3a;
-      color: white;
-      font-size: 150%;
-      font-family: Arial;
-      text-align: center;
-    }
-    input, button {
-      padding: 10px;
-      margin: 5px;
-      font-size: 16px;
-    }
-    button {
-      cursor: pointer;
-    }
-  </style>
+  body {
+    background-color: #0b1f3a;
+    color: white;
+    font-family: Arial;
+    padding: 10px;
+  }
+
+  input {
+    width: 100%;
+    padding: 15px;
+    margin: 8px 0;
+    font-size: 18px;
+    border-radius: 10px;
+    border: none;
+  }
+
+  button {
+    width: 100%;
+    padding: 15px;
+    margin: 8px 0;
+    font-size: 18px;
+    border-radius: 10px;
+    border: none;
+    background-color: #1e90ff;
+    color: white;
+  }
+</style>
 </head>
 <body>
 
@@ -28,7 +40,6 @@
 
 <input type="text" id="busqueda" placeholder="Buscar por SKU">
 <button onclick="buscar()">Buscar</button>
-<button onclick="cargarDatos()">Ver todo</button>
 <button onclick="limpiar()">Limpiar</button>
 
 <h2>Resultados</h2>
@@ -155,10 +166,11 @@ function mostrar(lista) {
 
   lista.forEach(item => {
     div.innerHTML += `
-      <p>
-        SKU: ${item.data.sku} | Marbete: ${item.data.marbete}
-        <button onclick="eliminar('${item.id}')">❌</button>
-      </p>
+      <div style="background:#13294b; margin:10px 0; padding:15px; border-radius:10px;">
+        <strong>SKU:</strong> ${item.data.sku} <br>
+        <strong>Marbete:</strong> ${item.data.marbete} <br><br>
+        <button onclick="eliminar('${item.id}')">Eliminar</button>
+      </div>
     `;
   });
 }
