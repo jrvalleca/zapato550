@@ -3,192 +3,169 @@
 <head>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta charset="UTF-8">
-  <title>Buscador de Calzado</title>
+  <title>Buscador de Calzado Pro</title>
 
   <style>
-  body {
-    background-color: #0b1f3a;
-    color: white;
-    font-family: Arial;
-    padding: 10px;
-  }
+    body {
+      background-color: #0b1f3a;
+      color: white;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      padding: 20px;
+      max-width: 600px;
+      margin: auto;
+    }
 
-  input {
-    width: 100%;
-    padding: 15px;
-    margin: 8px 0;
-    font-size: 18px;
-    border-radius: 10px;
-    border: none;
-  }
+    .card {
+      background: #13294b;
+      margin: 10px 0;
+      padding: 15px;
+      border-radius: 12px;
+      border-left: 5px solid #1e90ff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
 
-  button {
-    width: 100%;
-    padding: 15px;
-    margin: 8px 0;
-    font-size: 18px;
-    border-radius: 10px;
-    border: none;
-    background-color: #1e90ff;
-    color: white;
-  }
-</style>
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      font-size: 16px;
+      border-radius: 8px;
+      border: 1px solid #1e90ff;
+      background: #f0f8ff;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin: 8px 0;
+      font-size: 16px;
+      font-weight: bold;
+      border-radius: 8px;
+      border: none;
+      background-color: #1e90ff;
+      color: white;
+      cursor: pointer;
+      transition: 0.3s;
+    }
+
+    button:hover { background-color: #0073e6; }
+    .btn-delete { background-color: #ff4d4d; width: auto; padding: 5px 10px; }
+    
+    .status { color: #00ffcc; font-size: 0.9em; margin-bottom: 10px; }
+  </style>
 </head>
 <body>
 
-<h1>Buscador de Calzado</h1>
+<h1>👟 Buscador de Calzado</h1>
+<p id="contador" class="status">Cargando base de datos...</p>
 
-<input type="text" id="busqueda" placeholder="Buscar por SKU">
-<button onclick="buscar()">Buscar</button>
-<button onclick="limpiar()">Limpiar</button>
+<input type="text" id="busqueda" placeholder="Escribe el SKU para buscar..." oninput="buscar()">
+<button onclick="limpiar()">Limpiar pantalla</button>
 
-<h2>Resultados</h2>
 <div id="resultados"></div>
 
 <hr>
 
-<div style="display:none;">
-  <h2>Agregar</h2>
-  <input type="text" id="sku" placeholder="SKU">
-  <input type="text" id="marbete" placeholder="Marbete">
-  <br>
-  <button onclick="agregar()">+</button>
-</div>
-
 <h2>Carga masiva</h2>
-<textarea id="masivo" rows="10" cols="40" placeholder="SKU,Marbete"></textarea>
-<br>
-<button onclick="cargaMasiva()">Cargar masivo</button>
+<textarea id="masivo" rows="4" placeholder="SKU,Marbete (un par por línea)"></textarea>
+<button onclick="cargaMasiva()">Cargar a Firebase 🔥</button>
 
 <script type="module">
-
-// 🔥 PEGA TU CONFIG DE FIREBASE AQUÍ
-const firebaseConfig = {
-  apiKey: "AIzaSyBoQEvXvc_XUz7pmaLRXOl-74SRPR5e5i0",
-
-    authDomain: "buscadorcalzadoliv.firebaseapp.com",
-
-    projectId: "buscadorcalzadoliv",
-
-    storageBucket: "buscadorcalzadoliv.firebasestorage.app",
-
-    messagingSenderId: "851864036279",
-
-    appId: "1:851864036279:web:be11ccf3880f6d05a3fe32",
-
-    measurementId: "G-60KYGCY60G",
-};
-
-// Firebase imports
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+const firebaseConfig = {
+    apiKey: "AIzaSyBoQEvXvc_XUz7pmaLRXOl-74SRPR5e5i0",
+    authDomain: "buscadorcalzadoliv.firebaseapp.com",
+    projectId: "buscadorcalzadoliv",
+    storageBucket: "buscadorcalzadoliv.firebasestorage.app",
+    messagingSenderId: "851864036279",
+    appId: "1:851864036279:web:be11ccf3880f6d05a3fe32"
+};
+
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
 const coleccion = "calzado";
 
-// ➕ AGREGAR
-window.agregar = async function() {
-  const sku = document.getElementById("sku").value;
-  const marbete = document.getElementById("marbete").value;
+let datosLocales = []; // Cache para no gastar lecturas de Firebase
 
-  if (!sku || !marbete) {
-    alert("Completa todos los campos");
-    return;
-  }
-
-  await addDoc(collection(db, coleccion), { sku, marbete });
-
-  document.getElementById("sku").value = "";
-  document.getElementById("marbete").value = "";
-
-  cargarDatos();
-}
-// CARGA MASIVA
-
-
-// 🔍 BUSCAR
-window.buscar = async function() {
-  const texto = document.getElementById("busqueda").value.toLowerCase();
-  const querySnapshot = await getDocs(collection(db, coleccion));
-
-  let resultados = [];
-
-  querySnapshot.forEach((docu) => {
-    const data = docu.data();
-
-    if (data.sku.toLowerCase().includes(texto)) {
-      resultados.push({
-        id: docu.id,
-        data: data
-      });
-    }
-  });
-
-  mostrar(resultados);
-}
-
-// 📦 VER TODO
-window.cargarDatos = async function() {
-  const querySnapshot = await getDocs(collection(db, coleccion));
-
-  let lista = [];
-
-  querySnapshot.forEach((docu) => {
-    lista.push({
-      id: docu.id,
-      data: docu.data()
+// Cargar datos al iniciar
+async function inicializar() {
+    const querySnapshot = await getDocs(collection(db, coleccion));
+    datosLocales = [];
+    querySnapshot.forEach((docu) => {
+        datosLocales.push({ id: docu.id, ...docu.data() });
     });
-  });
-
-  mostrar(lista);
+    document.getElementById("contador").innerText = `Base de datos lista: ${datosLocales.length} modelos.`;
 }
 
-// 🧹 LIMPIAR
-window.limpiar = function() {
-  document.getElementById("busqueda").value = "";
-  document.getElementById("resultados").innerHTML = "";
+// Buscar en la lista local (Rápido y gratis)
+window.buscar = function() {
+    const texto = document.getElementById("busqueda").value.toLowerCase();
+    const filtrados = datosLocales.filter(item => 
+        item.sku.toLowerCase().includes(texto) || 
+        item.marbete.toLowerCase().includes(texto)
+    );
+    mostrar(filtrados);
 }
 
-
-// 🖥️ MOSTRAR
 function mostrar(lista) {
-  const div = document.getElementById("resultados");
-  div.innerHTML = "";
+    const div = document.getElementById("resultados");
+    div.innerHTML = "";
+    if (lista.length === 0) return;
 
-  lista.forEach(item => {
-    div.innerHTML += `
-      <div style="background:#13294b; margin:10px 0; padding:15px; border-radius:10px;">
-        <strong>SKU:</strong> ${item.data.sku} <br>
-        <strong>Marbete:</strong> ${item.data.marbete} <br><br>
-        
-      </div>
-    `;
-  });
+    lista.forEach(item => {
+        div.innerHTML += `
+            <div class="card">
+                <div>
+                    <strong>SKU:</strong> ${item.sku} <br>
+                    <strong>Marbete:</strong> ${item.marbete}
+                </div>
+                <button class="btn-delete" onclick="eliminarRegistro('${item.id}')">Eliminar</button>
+            </div>
+        `;
+    });
+}
+
+window.eliminarRegistro = async function(id) {
+    if(confirm("¿Seguro que quieres borrar este registro?")) {
+        await deleteDoc(doc(db, coleccion, id));
+        await inicializar(); // Recargar
+        buscar(); // Actualizar vista
+    }
 }
 
 window.cargaMasiva = async function() {
-  const texto = document.getElementById("masivo").value;
+    const texto = document.getElementById("masivo").value;
+    const lineas = texto.split("\n");
+    let contador = 0;
 
-  const lineas = texto.split("\n");
-
-  for (let linea of lineas) {
-    const [sku, marbete] = linea.split(",");
-
-    if (sku && marbete) {
-      await addDoc(collection(db, "calzado"), {
-        sku: sku.trim(),
-        marbete: marbete.trim()
-      });
+    for (let linea of lineas) {
+        const [sku, marbete] = linea.split(",");
+        if (sku && marbete) {
+            await addDoc(collection(db, coleccion), {
+                sku: sku.trim(),
+                marbete: marbete.trim()
+            });
+            contador++;
+        }
     }
-  }
-
-  alert("Carga masiva completada 🔥");
-  cargarDatos();
+    alert(`Se agregaron ${contador} pares exitosamente.`);
+    document.getElementById("masivo").value = "";
+    await inicializar();
 }
 
-</script>
+window.limpiar = function() {
+    document.getElementById("busqueda").value = "";
+    document.getElementById("resultados").innerHTML = "";
+}
 
+// Arrancar la app
+inicializar();
+
+</script>
 </body>
 </html>
