@@ -151,13 +151,6 @@ window.limpiar = function() {
   document.getElementById("resultados").innerHTML = "";
 }
 
-// ❌ ELIMINAR
-window.eliminar = async function(id) {
-  if (confirm("¿Eliminar este registro?")) {
-    await deleteDoc(doc(db, coleccion, id));
-    cargarDatos();
-  }
-}
 
 // 🖥️ MOSTRAR
 function mostrar(lista) {
@@ -169,7 +162,7 @@ function mostrar(lista) {
       <div style="background:#13294b; margin:10px 0; padding:15px; border-radius:10px;">
         <strong>SKU:</strong> ${item.data.sku} <br>
         <strong>Marbete:</strong> ${item.data.marbete} <br><br>
-        <button onclick="eliminar('${item.id}')">Eliminar</button>
+        
       </div>
     `;
   });
