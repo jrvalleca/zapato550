@@ -1,153 +1,188 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta charset="UTF-8">
-  <title>Admin - Carga Excel a Firebase</title>
-  
-  <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-
-  <style>
-    body { background-color: #1a1a2e; color: white; font-family: sans-serif; padding: 20px; max-width: 600px; margin: auto; }
-    h1 { text-align: center; color: #4cc9f0; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control - Carga Maestra</title>
     
-    .panel-carga {
-      background: #16213e;
-      padding: 20px;
-      border-radius: 15px;
-      border: 1px solid #4cc9f0;
-      text-align: center;
-    }
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
 
-    input[type="file"] {
-      margin: 20px 0;
-      color: #4cc9f0;
-    }
+    <style>
+        body { 
+            background-color: #0f172a; 
+            color: #e2e8f0; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            margin: 0;
+            padding: 20px;
+        }
 
-    button {
-      width: 100%;
-      padding: 15px;
-      background-color: #4361ee;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-weight: bold;
-      cursor: pointer;
-      font-size: 16px;
-    }
+        .card {
+            background-color: #1e293b;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            width: 100%;
+            max-width: 450px;
+            text-align: center;
+            border: 1px solid #334155;
+        }
 
-    button:disabled { background-color: #555; }
+        h1 { color: #38bdf8; margin-bottom: 10px; font-size: 24px; }
+        p { color: #94a3b8; font-size: 14px; margin-bottom: 25px; }
 
-    #progreso {
-      margin-top: 15px;
-      color: #f72585;
-      font-weight: bold;
-      display: none;
-    }
+        .file-input-container {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 2px dashed #334155;
+            border-radius: 12px;
+            cursor: pointer;
+        }
 
-    .instrucciones {
-      font-size: 13px;
-      color: #888;
-      margin-top: 10px;
-      text-align: left;
-    }
-  </style>
+        input[type="file"] {
+            width: 100%;
+            color: #94a3b8;
+        }
+
+        button {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.3s;
+        }
+
+        button:hover { background-color: #1d4ed8; }
+        button:disabled { background-color: #475569; cursor: not-allowed; }
+
+        #status {
+            margin-top: 20px;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        .warning {
+            background-color: #450a0a;
+            color: #fca5a5;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 12px;
+            margin-top: 20px;
+            text-align: left;
+        }
+    </style>
 </head>
 <body>
 
-<h1>🚀 Panel de Carga Excel</h1>
+    <div class="card">
+        <h1>Admin Inventario</h1>
+        <p>Sincroniza tu Excel con la base de datos</p>
 
-<div class="panel-carga">
-  <p>Selecciona tu archivo de inventario</p>
-  <input type="file" id="archivoExcel" accept=".xlsx, .xls, .csv">
-  
-  <button id="btnSubir" onclick="procesarExcel()">🔥 Subir a la Nube</button>
-  
-  <div id="progreso">Procesando: 0%</div>
+        <div class="file-input-container">
+            <input type="file" id="excelFile" accept=".xlsx, .xls">
+        </div>
 
-  <div class="instrucciones">
-    <strong>Nota:</strong> El Excel debe tener las columnas tituladas como <b>SKU</b> y <b>Marbete</b> en la primera fila.
-  </div>
-</div>
+        <button id="uploadBtn">Sincronizar Ahora</button>
 
-<script type="module">
-  // CONFIGURACIÓN FIREBASE
-  const firebaseConfig = {
-    apiKey: "AIzaSyBoQEvXvc_XUz7pmaLRXOl-74SRPR5e5i0",
-    authDomain: "buscadorcalzadoliv.firebaseapp.com",
-    projectId: "buscadorcalzadoliv",
-    storageBucket: "buscadorcalzadoliv.firebasestorage.app",
-    messagingSenderId: "851864036279",
-    appId: "1:851864036279:web:be11ccf3880f6d05a3fe32"
-  };
+        <div id="status"></div>
 
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        <div class="warning">
+            <strong>⚠️ Atención:</strong> Al subir un nuevo archivo, se borrará TODO el inventario anterior en la nube para dejar únicamente lo que está en el Excel.
+        </div>
+    </div>
 
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-  const coleccion = "calzado";
+    <script type="module">
+        // CONFIGURACIÓN FIREBASE
+        const firebaseConfig = {
+            apiKey: "AIzaSyBoQEvXvc_XUz7pmaLRXOl-74SRPR5e5i0",
+            authDomain: "buscadorcalzadoliv.firebaseapp.com",
+            projectId: "buscadorcalzadoliv",
+            storageBucket: "buscadorcalzadoliv.firebasestorage.app",
+            messagingSenderId: "851864036279",
+            appId: "1:851864036279:web:be11ccf3880f6d05a3fe32"
+        };
 
-  window.procesarExcel = async function() {
-    const fileInput = document.getElementById("archivoExcel");
-    const btn = document.getElementById("btnSubir");
-    const progresoDiv = document.getElementById("progreso");
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, getDocs, writeBatch, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-    if (fileInput.files.length === 0) {
-      alert("Por favor selecciona un archivo primero.");
-      return;
-    }
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const colRef = collection(db, "calzado");
 
-    btn.disabled = true;
-    progresoDiv.style.display = "block";
-    progresoDiv.innerText = "Leyendo archivo...";
+        const fileInput = document.getElementById('excelFile');
+        const uploadBtn = document.getElementById('uploadBtn');
+        const statusDiv = document.getElementById('status');
 
-    const archivo = fileInput.files[0];
-    const reader = new FileReader();
+        uploadBtn.addEventListener('click', async () => {
+            if (!fileInput.files[0]) {
+                alert("Por favor selecciona un archivo primero.");
+                return;
+            }
 
-    reader.onload = async (e) => {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: 'array' });
-      
-      // Obtener la primera hoja
-      const nombreHoja = workbook.SheetNames[0];
-      const hoja = workbook.Sheets[nombreHoja];
-      
-      // Convertir a JSON
-      const filas = XLSX.utils.sheet_to_json(hoja);
-      
-      let subidos = 0;
-      const total = filas.length;
+            if (!confirm("Esto reemplazará todo el inventario actual. ¿Deseas continuar?")) return;
 
-      for (let fila of filas) {
-        // Buscamos las columnas (insensible a mayúsculas/minúsculas)
-        const sku = fila.SKU || fila.sku || fila.Sku;
-        const marbete = fila.Marbete || fila.marbete || fila.MARBETE;
+            uploadBtn.disabled = true;
+            statusDiv.style.color = "#38bdf8";
+            statusDiv.innerText = "Procesando archivo...";
 
-        if (sku && marbete) {
-          try {
-            await addDoc(collection(db, coleccion), {
-              sku: String(sku).trim(),
-              marbete: String(marbete).trim(),
-              fechaCarga: new Date().toISOString()
-            });
-            subidos++;
-            progresoDiv.innerText = `Subiendo: ${subidos} de ${total}`;
-          } catch (error) {
-            console.error("Error al subir fila:", error);
-          }
-        }
-      }
+            try {
+                // 1. Leer Excel
+                const file = fileInput.files[0];
+                const data = await file.arrayBuffer();
+                const workbook = XLSX.read(data, { type: 'array' });
+                const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+                const jsonData = XLSX.utils.sheet_to_json(worksheet);
 
-      alert(`✅ ¡Carga completada! Se agregaron ${subidos} registros.`);
-      btn.disabled = false;
-      progresoDiv.style.display = "none";
-      fileInput.value = "";
-    };
+                // 2. Limpiar Base de Datos (Borrar todo)
+                statusDiv.innerText = "Borrando inventario antiguo...";
+                const snapshot = await getDocs(colRef);
+                const deleteBatch = writeBatch(db);
+                snapshot.docs.forEach(documento => {
+                    deleteBatch.delete(documento.ref);
+                });
+                await deleteBatch.commit();
 
-    reader.readAsArrayBuffer(archivo);
-  }
-</script>
+                // 3. Subir nuevos datos
+                statusDiv.innerText = `Subiendo ${jsonData.length} registros...`;
+                const uploadBatch = writeBatch(db);
+                
+                jsonData.forEach(fila => {
+                    const sku = fila.sku || fila.SKU;
+                    const marbete = fila.marbete || fila.MARBETE;
 
+                    if (sku && marbete) {
+                        const newDoc = doc(colRef);
+                        uploadBatch.set(newDoc, {
+                            sku: String(sku).trim(),
+                            marbete: String(marbete).trim(),
+                            ultimaActualizacion: new Date().toISOString()
+                        });
+                    }
+                });
+
+                await uploadBatch.commit();
+                
+                statusDiv.style.color = "#4ade80";
+                statusDiv.innerText = "✅ Sincronización Exitosa";
+                fileInput.value = "";
+
+            } catch (error) {
+                console.error(error);
+                statusDiv.style.color = "#f87171";
+                statusDiv.innerText = "❌ Error en el proceso";
+            } finally {
+                uploadBtn.disabled = false;
+            }
+        });
+    </script>
 </body>
 </html>
