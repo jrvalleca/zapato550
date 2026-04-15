@@ -3,94 +3,28 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Admin - Carga Flexible</title>
-    
+    <title>Panel Admin Pro - 8000+ Registros</title>
     <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
-
     <style>
-        body { 
-            background-color: #0f172a; 
-            color: #e2e8f0; 
-            font-family: sans-serif; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            min-height: 100vh; 
-            margin: 0;
-            padding: 20px;
-        }
-
-        .card {
-            background-color: #1e293b;
-            padding: 30px;
-            border-radius: 20px;
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-            border: 1px solid #334155;
-        }
-
-        h1 { color: #38bdf8; font-size: 22px; margin-bottom: 5px; }
-        p { color: #94a3b8; font-size: 14px; margin-bottom: 20px; }
-
-        .file-box {
-            margin-bottom: 20px;
-            padding: 25px;
-            border: 2px dashed #334155;
-            border-radius: 12px;
-            background: #161e2e;
-        }
-
-        input[type="file"] { width: 100%; color: #94a3b8; }
-
-        button {
-            background-color: #2563eb;
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: 10px;
-            font-weight: bold;
-            width: 100%;
-            cursor: pointer;
-        }
-
+        body { background-color: #0f172a; color: #e2e8f0; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
+        .card { background-color: #1e293b; padding: 30px; border-radius: 20px; width: 100%; max-width: 400px; text-align: center; border: 1px solid #334155; }
+        h1 { color: #38bdf8; font-size: 22px; }
+        .file-box { margin-bottom: 20px; padding: 25px; border: 2px dashed #334155; border-radius: 12px; background: #161e2e; }
+        button { background-color: #2563eb; color: white; border: none; padding: 15px; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; }
         button:disabled { background-color: #475569; }
-
-        #status {
-            margin-top: 20px;
-            font-weight: bold;
-            font-size: 14px;
-        }
-
-        .info {
-            font-size: 11px;
-            color: #64748b;
-            margin-top: 15px;
-            text-align: left;
-            line-height: 1.4;
-        }
+        #status { margin-top: 20px; font-weight: bold; font-size: 14px; white-space: pre-wrap; }
     </style>
 </head>
 <body>
 
     <div class="card">
-        <h1>Sincronizar Bodega</h1>
-        <p>Estructura: sku | marbete</p>
-
+        <h1>Sincronización Masiva</h1>
+        <p>Optimizada para más de 8,000 registros</p>
         <div class="file-box">
             <input type="file" id="excelFile" accept=".xlsx, .xls">
         </div>
-
-        <button id="uploadBtn">🔥 Iniciar Sincronización</button>
-
+        <button id="uploadBtn">🚀 Iniciar Limpieza y Carga</button>
         <div id="status"></div>
-
-        <div class="info">
-            • Se permite el mismo SKU en varios marbetes.<br>
-            • Marbetes pueden llevar letras y guiones.<br>
-            • Se borrará el inventario anterior antes de cargar.
-        </div>
     </div>
 
     <script type="module">
@@ -104,7 +38,7 @@
         };
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, writeBatch, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs, writeBatch, doc, query, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -114,12 +48,28 @@
         const uploadBtn = document.getElementById('uploadBtn');
         const statusDiv = document.getElementById('status');
 
+        // FUNCIÓN PARA BORRAR MILES DE DATOS EN BLOQUES DE 500
+        async function borrarTodoElInventario() {
+            let totalBorrados = 0;
+            while (true) {
+                const q = query(colRef, limit(500));
+                const snapshot = await getDocs(q);
+                if (snapshot.empty) break;
+
+                const batch = writeBatch(db);
+                snapshot.docs.forEach(d => batch.delete(d.ref));
+                await batch.commit();
+                
+                totalBorrados += snapshot.size;
+                statusDiv.innerText = `Limpiando: ${totalBorrados} registros borrados...`;
+            }
+        }
+
         uploadBtn.addEventListener('click', async () => {
             if (!fileInput.files[0]) return alert("Selecciona un archivo Excel");
 
             uploadBtn.disabled = true;
             statusDiv.style.color = "#38bdf8";
-            statusDiv.innerText = "Leyendo archivo...";
 
             try {
                 const file = fileInput.files[0];
@@ -127,47 +77,40 @@
                 const workbook = XLSX.read(data, { type: 'array' });
                 const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
 
-                // 1. LIMPIEZA RESISTENTE
-                statusDiv.innerText = "Limpiando base de datos...";
-                try {
-                    const snapshot = await getDocs(colRef);
-                    if (!snapshot.empty) {
-                        const deleteBatch = writeBatch(db);
-                        snapshot.docs.forEach(d => deleteBatch.delete(d.ref));
-                        await deleteBatch.commit();
-                    }
-                } catch (e) {
-                    console.log("Limpieza omitida o sin datos previos.");
+                // 1. Borrado inteligente
+                await borrarTodoElInventario();
+
+                // 2. Carga por bloques (Batch de 500)
+                statusDiv.innerText += `\nLimpieza completa. Subiendo ${jsonData.length} registros nuevos...`;
+                
+                for (let i = 0; i < jsonData.length; i += 500) {
+                    const batch = writeBatch(db);
+                    const pedazo = jsonData.slice(i, i + 500);
+                    
+                    pedazo.forEach(fila => {
+                        const sku = fila.sku || fila.SKU;
+                        const marbete = fila.marbete || fila.MARBETE;
+                        if (sku && marbete) {
+                            const newDoc = doc(colRef);
+                            batch.set(newDoc, {
+                                sku: String(sku).trim(),
+                                marbete: String(marbete).trim(),
+                                fecha: new Date().toISOString()
+                            });
+                        }
+                    });
+                    await batch.commit();
+                    statusDiv.innerText = `Progreso: ${Math.min(i + 500, jsonData.length)} de ${jsonData.length}`;
                 }
 
-                // 2. CARGA DE DATOS (Basado en tu imagen)
-                statusDiv.innerText = `Cargando ${jsonData.length} registros...`;
-                const uploadBatch = writeBatch(db);
-                
-                jsonData.forEach(fila => {
-                    const skuValue = fila.sku || fila.SKU;
-                    const marbeteValue = fila.marbete || fila.MARBETE;
-
-                    if (skuValue && marbeteValue) {
-                        const newDoc = doc(colRef);
-                        uploadBatch.set(newDoc, {
-                            sku: String(skuValue).trim(),
-                            marbete: String(marbeteValue).trim(),
-                            actualizado: new Date().toISOString()
-                        });
-                    }
-                });
-
-                await uploadBatch.commit();
-                
                 statusDiv.style.color = "#4ade80";
-                statusDiv.innerText = "✅ ¡Cargado con éxito!";
+                statusDiv.innerText = "✅ ¡Sincronización Total Exitosa!";
                 fileInput.value = "";
 
             } catch (error) {
                 console.error(error);
                 statusDiv.style.color = "#f87171";
-                statusDiv.innerText = "❌ Error. Revisa permisos de Firebase.";
+                statusDiv.innerText = "❌ Error. Revisa la consola o las reglas.";
             } finally {
                 uploadBtn.disabled = false;
             }
