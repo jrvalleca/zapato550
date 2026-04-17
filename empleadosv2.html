@@ -3,64 +3,132 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador Bodega Pro</title>
+    <title>Buscador Bodega - Liverpool</title>
     <style>
         :root {
-            --bg: #0f172a; --card: #1e293b; --accent: #38bdf8;
-            --success: #22c55e; --danger: #ef4444; --text-dim: #94a3b8;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --accent: #38bdf8;
+            --success: #22c55e;
+            --danger: #ef4444;
+            --text-dim: #94a3b8;
         }
+
         body { 
-            background-color: var(--bg); color: #f1f5f9; 
-            font-family: system-ui, sans-serif; padding: 15px; margin: 0;
-            display: flex; flex-direction: column; align-items: center;
+            background-color: var(--bg); 
+            color: #f1f5f9; 
+            font-family: system-ui, -apple-system, sans-serif; 
+            padding: 15px; 
+            margin: 0;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
         }
+
         .container { width: 100%; max-width: 450px; }
+
         .search-section {
-            background: var(--card); padding: 20px; border-radius: 20px;
-            margin-bottom: 20px; border: 1px solid #334155;
-            position: sticky; top: 10px; z-index: 100;
+            background: var(--card); 
+            padding: 20px; 
+            border-radius: 20px;
+            margin-bottom: 20px; 
+            border: 1px solid #334155;
+            position: sticky; 
+            top: 10px; 
+            z-index: 100;
             box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
+
         .input-group { display: flex; gap: 8px; }
+
         input { 
-            flex: 1; padding: 12px; border-radius: 12px; border: 2px solid #334155; 
-            background: #0f172a; color: white; font-size: 16px;
+            flex: 1; 
+            padding: 14px; 
+            border-radius: 12px; 
+            border: 2px solid #334155; 
+            background: #0f172a; 
+            color: white; 
+            font-size: 16px;
+            outline: none;
         }
+
+        input:focus { border-color: var(--accent); }
+
         #searchBtn { 
-            background: var(--accent); color: #0f172a; border: none; 
-            border-radius: 12px; padding: 0 20px; font-weight: bold; cursor: pointer;
+            background: var(--accent); 
+            color: #0f172a; 
+            border: none; 
+            border-radius: 12px; 
+            padding: 0 20px; 
+            font-weight: bold; 
+            cursor: pointer;
         }
-        #listaBusquedas { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+
+        #listaBusquedas { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 12px; 
+            width: 100%; 
+        }
+
         .item-card { 
-            background: var(--card); padding: 15px; border-radius: 15px; 
+            background: var(--card); 
+            padding: 18px; 
+            border-radius: 15px; 
             border-left: 5px solid var(--accent);
-            display: flex; justify-content: space-between; align-items: center;
-            animation: fadeIn 0.3s ease-out;
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+            transition: all 0.3s ease;
         }
+
         .marca-tag {
-            font-size: 0.7rem; background: rgba(56, 189, 248, 0.1);
-            color: var(--accent); padding: 2px 8px; border-radius: 5px;
-            text-transform: uppercase; font-weight: 800; display: inline-block; margin-bottom: 5px;
+            font-size: 0.7rem; 
+            background: rgba(56, 189, 248, 0.1);
+            color: var(--accent); 
+            padding: 3px 8px; 
+            border-radius: 5px;
+            text-transform: uppercase; 
+            font-weight: 800; 
+            display: inline-block; 
+            margin-bottom: 8px;
         }
-        .marbete-text { font-size: 1.6rem; font-weight: bold; color: #fff; margin: 0; }
-        .sku-text { font-size: 0.85rem; color: var(--text-dim); margin: 0; }
-        .actions { display: flex; gap: 6px; }
-        .btn { border: none; border-radius: 8px; padding: 10px; font-weight: bold; font-size: 0.65rem; cursor: pointer; color: white; }
+
+        .marbete-text { font-size: 1.7rem; font-weight: bold; color: #fff; margin: 0; }
+        .sku-text { font-size: 0.85rem; color: var(--text-dim); margin: 5px 0 0 0; }
+
+        .actions { display: flex; flex-direction: column; gap: 8px; }
+
+        .btn { 
+            border: none; 
+            border-radius: 10px; 
+            padding: 10px 15px; 
+            font-weight: bold; 
+            font-size: 0.75rem; 
+            cursor: pointer; 
+            color: white;
+            min-width: 90px;
+        }
+
         .btn-dev { background: #475569; }
         .btn-ven { background: var(--danger); }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeOut { to { opacity: 0; transform: scale(0.9); } }
+
+        @keyframes fadeOut {
+            to { opacity: 0; transform: scale(0.9); }
+        }
     </style>
 </head>
 <body>
+
     <div class="container">
         <div class="search-section">
-            <h2 style="margin:0 0 15px 0; font-size: 1.1rem; text-align: center;">🔍 Buscador de Ubicaciones</h2>
+            <h2 style="margin:0 0 15px 0; font-size: 1.2rem; text-align: center; color: var(--accent);">🔎 Buscador SIBO+</h2>
             <div class="input-group">
-                <input type="text" id="skuInput" placeholder="Escanea SKU..." autocomplete="off">
-                <button id="searchBtn">IR</button>
+                <input type="text" id="skuInput" placeholder="Escribe o escanea SKU..." autocomplete="off">
+                <button id="searchBtn">BUSCAR</button>
             </div>
         </div>
+
         <div id="listaBusquedas"></div>
     </div>
 
@@ -68,6 +136,7 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
+        // CONFIGURACIÓN DE TU PROYECTO
         const firebaseConfig = {
             apiKey: "AIzaSyBoQEvXvc_XUz7pmaLRXOl-74SRPR5e5i0",
             authDomain: "buscadorcalzadoliv.firebaseapp.com",
@@ -84,24 +153,37 @@
         const searchBtn = document.getElementById('searchBtn');
         const listaBusquedas = document.getElementById('listaBusquedas');
 
-        async function buscar() {
+        // FUNCIÓN DE BÚSQUEDA
+        async function ejecutarBusqueda() {
             const val = skuInput.value.trim().toUpperCase();
             if (!val) return;
+
+            listaBusquedas.innerHTML = "<p style='text-align:center; color:gray;'>Buscando...</p>";
+
             try {
                 const q = query(collection(db, "calzado"), where("sku", "==", val));
                 const snap = await getDocs(q);
-                if (snap.empty) { alert("SKU no encontrado"); }
-                else {
+                
+                listaBusquedas.innerHTML = ""; // Limpiar el "Buscando..."
+
+                if (snap.empty) {
+                    alert("No se encontró el SKU: " + val);
+                } else {
                     snap.forEach(d => {
                         const data = d.data();
-                        renderizar(d.id, data.sku, data.marbete, data.marca);
+                        renderizarTarjeta(d.id, data.sku, data.marbete, data.marca);
                     });
                 }
-                skuInput.value = ""; skuInput.focus();
-            } catch (e) { console.error(e); }
+                skuInput.value = "";
+                skuInput.focus();
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Error de conexión");
+            }
         }
 
-        function renderizar(id, sku, marbete, marca) {
+        // FUNCIÓN PARA CREAR LA TARJETA EN PANTALLA
+        function renderizarTarjeta(id, sku, marbete, marca) {
             const card = document.createElement('div');
             card.className = 'item-card';
             card.id = `card-${id}`;
@@ -112,30 +194,71 @@
                     <p class="sku-text">SKU: ${sku}</p>
                 </div>
                 <div class="actions">
-                    <button class="btn btn-dev" onclick="accionDevolver('${id}')">🔄 REGRESAR</button>
-                    <button class="btn btn-ven" onclick="accionVender('${id}','${sku}','${marbete}','${marca}')">💰 VENDIDO</button>
+                    <button class="btn btn-dev" id="btn-dev-${id}">QUITAR</button>
+                    <button class="btn btn-ven" id="btn-ven-${id}">VENDIDO</button>
                 </div>
             `;
             listaBusquedas.prepend(card);
+
+            // Asignar eventos a los botones
+            document.getElementById(`btn-dev-${id}`).onclick = () => quitarDePantalla(id);
+            document.getElementById(`btn-ven-${id}`).onclick = () => procesarVenta(id, sku, marbete, marca);
         }
 
-        window.accionDevolver = (id) => {
-            const c = document.getElementById(`card-${id}`);
-            if(c) { c.style.animation = "fadeOut 0.3s forwards"; setTimeout(()=>c.remove(), 300); }
-        };
+        // SOLO QUITA DE LA VISTA (Para errores o limpieza)
+        function quitarDePantalla(id) {
+            const card = document.getElementById(`card-${id}`);
+            if(card) {
+                card.style.animation = "fadeOut 0.3s forwards";
+                setTimeout(() => card.remove(), 300);
+            }
+        }
 
-        window.accionVender = async (id, sku, marbete, marca) => {
-            if(!confirm("¿Confirmar venta?")) return;
+        // PROCESA LA VENTA REAL EN FIREBASE
+        async function procesarVenta(id, sku, marbete, marca) {
+            if(!confirm("¿Confirmar que este par se vendió?")) return;
+
+            const card = document.getElementById(`card-${id}`);
+            const btnVen = document.getElementById(`btn-ven-${id}`);
+
             try {
-                await deleteDoc(doc(db, "calzado", id));
-                await addDoc(collection(db, "historial"), { sku, marbete, marca: marca || "GENERAL", tipo: 'VENDIDO', fecha: serverTimestamp() });
-                const c = document.getElementById(`card-${id}`);
-                if(c) { c.innerHTML = "<b style='color:var(--success)'>✅ VENTA REGISTRADA</b>"; setTimeout(()=>c.remove(), 1500); }
-            } catch (e) { alert("Error"); }
-        };
+                btnVen.disabled = true;
+                btnVen.innerText = "...";
 
-        searchBtn.addEventListener('click', buscar);
-        skuInput.addEventListener('keypress', (e) => { if(e.key==='Enter') buscar(); });
+                // 1. Borrar de la base de datos
+                await deleteDoc(doc(db, "calzado", id));
+
+                // 2. Registrar en historial (opcional, no detiene el proceso)
+                try {
+                    await addDoc(collection(db, "historial"), {
+                        sku, marbete, marca: marca || "GENERAL", 
+                        tipo: "VENTA", 
+                        fecha: serverTimestamp()
+                    });
+                } catch (e) { console.log("Historial no guardado"); }
+
+                // 3. Feedback visual y remover
+                card.style.borderLeft = "5px solid var(--success)";
+                card.innerHTML = `<div style="width:100%; text-align:center; padding:10px; color:var(--success); font-weight:bold;">✅ VENTA REGISTRADA</div>`;
+                
+                setTimeout(() => {
+                    card.style.animation = "fadeOut 0.5s forwards";
+                    setTimeout(() => card.remove(), 500);
+                }, 1000);
+
+            } catch (error) {
+                console.error(error);
+                alert("Error al borrar de la base de datos");
+                btnVen.disabled = false;
+                btnVen.innerText = "VENDIDO";
+            }
+        }
+
+        // EVENTOS DE DISPARO
+        searchBtn.addEventListener('click', ejecutarBusqueda);
+        skuInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') ejecutarBusqueda();
+        });
     </script>
 </body>
 </html>
