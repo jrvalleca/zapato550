@@ -3,31 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Panel Admin Pro - 8000+ Registros</title>
-    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <title>Cargador Masivo Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        body { background-color: #0f172a; color: #e2e8f0; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 20px; }
-        .card { background-color: #1e293b; padding: 30px; border-radius: 20px; width: 100%; max-width: 400px; text-align: center; border: 1px solid #334155; }
-        h1 { color: #38bdf8; font-size: 22px; }
-        .file-box { margin-bottom: 20px; padding: 25px; border: 2px dashed #334155; border-radius: 12px; background: #161e2e; }
-        button { background-color: #2563eb; color: white; border: none; padding: 15px; border-radius: 10px; font-weight: bold; width: 100%; cursor: pointer; }
-        button:disabled { background-color: #475569; }
-        #status { margin-top: 20px; font-weight: bold; font-size: 14px; white-space: pre-wrap; }
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --success: #22c55e; }
+        body { background: var(--bg); color: #fff; font-family: sans-serif; display: flex; justify-content: center; padding: 20px; }
+        .box { background: var(--card); padding: 30px; border-radius: 20px; width: 100%; max-width: 400px; border: 1px solid #334155; }
+        .drop-zone { border: 2px dashed #334155; padding: 20px; text-align: center; border-radius: 15px; margin: 20px 0; }
+        button { width: 100%; padding: 15px; border-radius: 12px; border: none; background: var(--accent); font-weight: bold; cursor: pointer; }
+        button:disabled { background: #475569; }
+        .stats { margin-top: 20px; background: #0f172a; padding: 15px; border-radius: 12px; display: none; }
+        .progress { width: 100%; height: 8px; background: #334155; border-radius: 4px; margin-top: 10px; overflow: hidden; }
+        #bar { width: 0%; height: 100%; background: var(--accent); transition: 0.2s; }
     </style>
 </head>
 <body>
-
-    <div class="card">
-        <h1>Sincronización Masiva</h1>
-        <p>Optimizada para más de 8,000 registros</p>
-        <div class="file-box">
-            <input type="file" id="excelFile" accept=".xlsx, .xls">
+    <div class="box">
+        <h2 style="text-align:center; color:var(--accent)">Carga Ortodoxa</h2>
+        <p style="font-size: 0.8rem; text-align: center; color: #94a3b8;">Columnas: <b>sku</b>, <b>marbete</b>, <b>marca</b></p>
+        <div class="drop-zone">
+            <input type="file" id="fileIn" accept=".xlsx, .xls">
         </div>
-        <button id="uploadBtn">🚀 Iniciar Limpieza y Carga</button>
-        <div id="status"></div>
+        <button id="upBtn" disabled>INICIAR CARGA</button>
+        <div id="statBox" class="stats">
+            <div style="display:flex; justify-content:space-between"><span>Registros:</span> <b id="total">0</b></div>
+            <div style="display:flex; justify-content:space-between"><span>Subidos:</span> <b id="proc">0</b></div>
+            <div class="progress"><div id="bar"></div></div>
+        </div>
+        <p id="msg" style="text-align:center; font-size:0.8rem; margin-top:15px;"></p>
     </div>
 
     <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
         const firebaseConfig = {
             apiKey: "AIzaSyBoQEvXvc_XUz7pmaLRXOl-74SRPR5e5i0",
             authDomain: "buscadorcalzadoliv.firebaseapp.com",
@@ -37,83 +46,42 @@
             appId: "1:851864036279:web:be11ccf3880f6d05a3fe32"
         };
 
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, getDocs, writeBatch, doc, query, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
-        const colRef = collection(db, "calzado");
+        let data = [];
 
-        const fileInput = document.getElementById('excelFile');
-        const uploadBtn = document.getElementById('uploadBtn');
-        const statusDiv = document.getElementById('status');
-
-        // FUNCIÓN PARA BORRAR MILES DE DATOS EN BLOQUES DE 500
-        async function borrarTodoElInventario() {
-            let totalBorrados = 0;
-            while (true) {
-                const q = query(colRef, limit(500));
-                const snapshot = await getDocs(q);
-                if (snapshot.empty) break;
-
-                const batch = writeBatch(db);
-                snapshot.docs.forEach(d => batch.delete(d.ref));
-                await batch.commit();
-                
-                totalBorrados += snapshot.size;
-                statusDiv.innerText = `Limpiando: ${totalBorrados} registros borrados...`;
-            }
-        }
-
-        uploadBtn.addEventListener('click', async () => {
-            if (!fileInput.files[0]) return alert("Selecciona un archivo Excel");
-
-            uploadBtn.disabled = true;
-            statusDiv.style.color = "#38bdf8";
-
-            try {
-                const file = fileInput.files[0];
-                const data = await file.arrayBuffer();
-                const workbook = XLSX.read(data, { type: 'array' });
-                const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
-
-                // 1. Borrado inteligente
-                await borrarTodoElInventario();
-
-                // 2. Carga por bloques (Batch de 500)
-                statusDiv.innerText += `\nLimpieza completa. Subiendo ${jsonData.length} registros nuevos...`;
-                
-                for (let i = 0; i < jsonData.length; i += 500) {
-                    const batch = writeBatch(db);
-                    const pedazo = jsonData.slice(i, i + 500);
-                    
-                    pedazo.forEach(fila => {
-                        const sku = fila.sku || fila.SKU;
-                        const marbete = fila.marbete || fila.MARBETE;
-                        if (sku && marbete) {
-                            const newDoc = doc(colRef);
-                            batch.set(newDoc, {
-                                sku: String(sku).trim(),
-                                marbete: String(marbete).trim(),
-                                fecha: new Date().toISOString()
-                            });
-                        }
-                    });
-                    await batch.commit();
-                    statusDiv.innerText = `Progreso: ${Math.min(i + 500, jsonData.length)} de ${jsonData.length}`;
+        document.getElementById('fileIn').addEventListener('change', (e) => {
+            const reader = new FileReader();
+            reader.onload = (ex) => {
+                const wb = XLSX.read(ex.target.result, { type: 'binary' });
+                data = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                if(data.length > 0) {
+                    document.getElementById('upBtn').disabled = false;
+                    document.getElementById('statBox').style.display = 'block';
+                    document.getElementById('total').innerText = data.length;
                 }
+            };
+            reader.readAsBinaryString(e.target.files[0]);
+        });
 
-                statusDiv.style.color = "#4ade80";
-                statusDiv.innerText = "✅ ¡Sincronización Total Exitosa!";
-                fileInput.value = "";
-
-            } catch (error) {
-                console.error(error);
-                statusDiv.style.color = "#f87171";
-                statusDiv.innerText = "❌ Error. Revisa la consola o las reglas.";
-            } finally {
-                uploadBtn.disabled = false;
+        document.getElementById('upBtn').addEventListener('click', async () => {
+            document.getElementById('upBtn').disabled = true;
+            let c = 0;
+            for(const i of data) {
+                if(i.sku && i.marbete) {
+                    await addDoc(collection(db, "calzado"), {
+                        sku: String(i.sku).trim().toUpperCase(),
+                        marbete: String(i.marbete).trim().toUpperCase(),
+                        marca: i.marca ? String(i.marca).trim().toUpperCase() : "GENERAL",
+                        fecha: serverTimestamp()
+                    });
+                }
+                c++;
+                document.getElementById('proc').innerText = c;
+                document.getElementById('bar').style.width = (c/data.length)*100 + "%";
             }
+            document.getElementById('msg').innerHTML = "<b>¡COMPLETO!</b>";
+            alert("Carga terminada");
         });
     </script>
 </body>
