@@ -1,53 +1,74 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cargador Masivo Pro - Control de Datos</title>
+    <title>Panel de Control - Inventario</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --success: #22c55e; --danger: #ef4444; }
-        body { background: var(--bg); color: #fff; font-family: sans-serif; display: flex; justify-content: center; padding: 20px; }
-        .box { background: var(--card); padding: 30px; border-radius: 20px; width: 100%; max-width: 400px; border: 1px solid #334155; }
-        .drop-zone { border: 2px dashed #334155; padding: 20px; text-align: center; border-radius: 15px; margin: 20px 0; }
+        body { background: var(--bg); color: #fff; font-family: sans-serif; display: flex; justify-content: center; padding: 20px; margin: 0; }
+        .box { background: var(--card); padding: 30px; border-radius: 20px; width: 100%; max-width: 450px; border: 1px solid #334155; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         
-        button { width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; margin-bottom: 10px; transition: 0.3s; }
+        /* Estilos de Login */
+        #loginSection { text-align: center; padding: 20px 0; }
+        .login-input { width: 80%; padding: 12px; border-radius: 10px; border: 2px solid #334155; background: #0f172a; color: white; text-align: center; font-size: 1.2rem; letter-spacing: 5px; margin-bottom: 15px; }
+        
+        /* Estilos de Panel */
+        #adminPanel { display: none; } /* Oculto hasta que se loguee */
+        .drop-zone { border: 2px dashed #334155; padding: 20px; text-align: center; border-radius: 15px; margin: 20px 0; background: rgba(15, 23, 42, 0.5); }
+        
+        button { width: 100%; padding: 14px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; margin-bottom: 10px; transition: 0.3s; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .btn-up { background: var(--accent); color: #0f172a; }
         .btn-up:disabled { background: #475569; color: #94a3b8; }
-        .btn-clear { background: transparent; color: var(--danger); border: 1px solid var(--danger); font-size: 0.7rem; }
-        .btn-clear:hover { background: var(--danger); color: white; }
-
-        .stats { margin-top: 20px; background: #0f172a; padding: 15px; border-radius: 12px; display: none; }
+        .btn-export { background: transparent; color: var(--success); border: 1px solid var(--success); }
+        .btn-clear { background: transparent; color: var(--danger); border: 1px solid var(--danger); font-size: 0.75rem; margin-top: 20px; }
+        
+        .stats { margin-top: 20px; background: #0f172a; padding: 15px; border-radius: 12px; }
         .progress { width: 100%; height: 8px; background: #334155; border-radius: 4px; margin-top: 10px; overflow: hidden; }
         #bar { width: 0%; height: 100%; background: var(--accent); transition: 0.2s; }
+        #msg { text-align: center; font-size: 0.85rem; margin-top: 15px; min-height: 20px; }
     </style>
 </head>
 <body>
+
     <div class="box">
-        <h2 style="text-align:center; color:var(--accent); margin-bottom: 5px;">Carga Ortodoxa</h2>
-        <p style="font-size: 0.7rem; text-align: center; color: #94a3b8; margin-bottom: 20px;">Cada carga se suma a lo existente a menos que limpies la base.</p>
-        
-        <div class="drop-zone">
-            <input type="file" id="fileIn" accept=".xlsx, .xls">
+        <div id="loginSection">
+            <h2 style="color: var(--accent)">Acceso Administrador</h2>
+            <p style="color: #94a3b8; font-size: 0.8rem;">Introduce la clave para gestionar la bodega</p>
+            <input type="password" id="passInput" class="login-input" placeholder="****">
+            <button onclick="checkLogin()" class="btn-up">ENTRAR</button>
         </div>
 
-        <button id="upBtn" class="btn-up" disabled>INICIAR SUBIDA</button>
-        
-        <div id="statBox" class="stats">
-            <div style="display:flex; justify-content:space-between"><span>Registros en Excel:</span> <b id="total">0</b></div>
-            <div style="display:flex; justify-content:space-between"><span>Subidos ahora:</span> <b id="proc">0</b></div>
-            <div class="progress"><div id="bar"></div></div>
-        </div>
+        <div id="adminPanel">
+            <h2 style="text-align:center; color:var(--accent); margin-bottom: 5px;">Panel de Carga</h2>
+            <p style="font-size: 0.75rem; text-align: center; color: #94a3b8;">Gestión de inventario en la nube</p>
+            
+            <button id="exportBtn" class="btn-export">📥 DESCARGAR RESPALDO (Excel)</button>
 
-        <hr style="border: 0; border-top: 1px solid #334155; margin: 20px 0;">
-        
-        <button id="clearBtn" class="btn-clear">⚠️ BORRAR TODO EL INVENTARIO ACTUAL</button>
-        <p id="msg" style="text-align:center; font-size:0.8rem; margin-top:10px;"></p>
+            <div class="drop-zone">
+                <input type="file" id="fileIn" accept=".xlsx, .xls">
+                <p style="font-size: 0.7rem; color: #94a3b8; margin-top: 10px;">Subir nuevo Excel (sku, marbete, marca)</p>
+            </div>
+
+            <button id="upBtn" class="btn-up" disabled>🚀 INICIAR CARGA MASIVA</button>
+            
+            <div id="statBox" class="stats" style="display:none">
+                <div style="display:flex; justify-content:space-between"><span>Detectados:</span> <b id="total">0</b></div>
+                <div style="display:flex; justify-content:space-between"><span>Procesados:</span> <b id="proc">0</b></div>
+                <div class="progress"><div id="bar"></div></div>
+            </div>
+
+            <p id="msg"></p>
+
+            <button id="clearBtn" class="btn-clear">⚠️ BORRAR TODO EL INVENTARIO</button>
+        </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBoQEvXvc_XUz7pmaLRXOl-74SRPR5e5i0",
@@ -62,7 +83,37 @@
         const db = getFirestore(app);
         let data = [];
 
-        // Leer Excel
+        // --- LÓGICA DE LOGIN ---
+        window.checkLogin = () => {
+            const pass = document.getElementById('passInput').value;
+            if(pass === "281075") { // <--- AQUÍ CAMBIA TU CONTRASEÑA
+                document.getElementById('loginSection').style.display = 'none';
+                document.getElementById('adminPanel').style.display = 'block';
+            } else {
+                alert("Clave incorrecta");
+            }
+        };
+
+        // --- EXPORTAR COPIA DE SEGURIDAD ---
+        document.getElementById('exportBtn').addEventListener('click', async () => {
+            const btn = document.getElementById('exportBtn');
+            btn.innerText = "Generando..."; btn.disabled = true;
+            try {
+                const snap = await getDocs(collection(db, "calzado"));
+                const exportData = [];
+                snap.forEach(d => {
+                    const i = d.data();
+                    exportData.push({ SKU: i.sku, MARBETE: i.marbete, MARCA: i.marca });
+                });
+                const ws = XLSX.utils.json_to_sheet(exportData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, "Inventario");
+                XLSX.writeFile(wb, `Respaldo_Bodega_${new Date().toLocaleDateString()}.xlsx`);
+            } catch (e) { alert("Error al exportar"); }
+            btn.innerText = "📥 DESCARGAR RESPALDO (Excel)"; btn.disabled = false;
+        });
+
+        // --- CARGAR EXCEL ---
         document.getElementById('fileIn').addEventListener('change', (e) => {
             const reader = new FileReader();
             reader.onload = (ex) => {
@@ -72,33 +123,15 @@
                     document.getElementById('upBtn').disabled = false;
                     document.getElementById('statBox').style.display = 'block';
                     document.getElementById('total').innerText = data.length;
-                    document.getElementById('msg').innerText = "Archivo listo.";
                 }
             };
             reader.readAsBinaryString(e.target.files[0]);
         });
 
-        // FUNCIÓN PARA BORRAR TODO
-        document.getElementById('clearBtn').addEventListener('click', async () => {
-            if(!confirm("¿ESTÁS SEGURO? Esto borrará TODO el inventario de la base de datos para dejarla en cero.")) return;
-            
-            document.getElementById('msg').innerText = "Limpiando base de datos... por favor espera.";
-            const querySnapshot = await getDocs(collection(db, "calzado"));
-            
-            // Usamos batch para borrar de 500 en 500 (límite de Firebase)
-            const deletePromises = querySnapshot.docs.map(d => deleteDoc(doc(db, "calzado", d.id)));
-            await Promise.all(deletePromises);
-            
-            document.getElementById('msg').innerHTML = "<b style='color:var(--success)'>BASE DE DATOS VACÍA. Lista para carga nueva.</b>";
-            alert("Inventario borrado por completo.");
-        });
-
-        // Subir Datos
+        // --- SUBIR A FIREBASE ---
         document.getElementById('upBtn').addEventListener('click', async () => {
             document.getElementById('upBtn').disabled = true;
-            document.getElementById('msg').innerText = "Subiendo datos...";
             let c = 0;
-            
             for(const i of data) {
                 if(i.sku && i.marbete) {
                     await addDoc(collection(db, "calzado"), {
@@ -112,11 +145,19 @@
                 document.getElementById('proc').innerText = c;
                 document.getElementById('bar').style.width = (c/data.length)*100 + "%";
             }
-            document.getElementById('msg').innerHTML = "<b style='color:var(--success)'>CARGA FINALIZADA</b>";
-            alert("Se cargaron " + c + " registros.");
-            // Reset de la interfaz
-            document.getElementById('fileIn').value = "";
-            data = [];
+            alert("Subida completada");
+            location.reload(); // Recarga para limpiar todo
+        });
+
+        // --- LIMPIAR TODO ---
+        document.getElementById('clearBtn').addEventListener('click', async () => {
+            if(!confirm("¿BORRAR TODO EL INVENTARIO? Asegúrate de haber descargado un respaldo antes.")) return;
+            document.getElementById('msg').innerText = "Borrando... espera.";
+            const snap = await getDocs(collection(db, "calzado"));
+            const promesas = snap.docs.map(d => deleteDoc(doc(db, "calzado", d.id)));
+            await Promise.all(promesas);
+            alert("Base de datos limpia");
+            location.reload();
         });
     </script>
 </body>
