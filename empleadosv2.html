@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador Bodega - Flujo Completo</title>
+    <title>Sistema Bodega - Empleados</title>
     <style>
         :root {
             --bg: #0f172a; --card: #1e293b; --accent: #38bdf8;
@@ -11,17 +11,17 @@
         }
         body { 
             background-color: var(--bg); color: #f1f5f9; 
-            font-family: system-ui, sans-serif; padding: 15px; margin: 0;
-            display: flex; flex-direction: column; align-items: center;
+            font-family: system-ui, -apple-system, sans-serif; 
+            padding: 15px; margin: 0; display: flex; flex-direction: column; align-items: center;
         }
         .container { width: 100%; max-width: 450px; }
         
-        /* Buscador Fijo Arriba */
+        /* Buscador Fijo */
         .search-section {
             background: var(--card); padding: 20px; border-radius: 20px;
             margin-bottom: 20px; border: 1px solid #334155;
-            position: sticky; top: 10px; z-index: 10;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+            position: sticky; top: 10px; z-index: 100;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
         }
         .input-group { display: flex; gap: 8px; }
         input { 
@@ -33,59 +33,47 @@
             border-radius: 12px; padding: 0 20px; font-weight: bold; cursor: pointer;
         }
 
-        /* Título de la lista */
-        .list-title { 
-            color: var(--text-dim); font-size: 0.75rem; font-weight: bold;
-            margin-bottom: 15px; text-transform: uppercase; letter-spacing: 1px;
-        }
-
-        /* Tarjetas de la Lista */
+        /* Lista */
+        .list-title { color: var(--text-dim); font-size: 0.75rem; margin-bottom: 10px; font-weight: bold; }
         #listaBusquedas { display: flex; flex-direction: column; gap: 12px; width: 100%; }
 
         .item-card { 
             background: var(--card); padding: 15px; border-radius: 15px; 
             border-left: 5px solid var(--accent);
             display: flex; justify-content: space-between; align-items: center;
-            animation: slideIn 0.3s ease-out forwards;
+            animation: fadeIn 0.3s ease-out;
         }
 
-        @keyframes slideIn { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
-        @keyframes fadeOut { from { opacity: 1; transform: scale(1); } to { opacity: 0; transform: scale(0.9); } }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeOut { to { opacity: 0; transform: scale(0.9); } }
 
-        .info { flex: 1; }
-        .marbete-text { font-size: 1.5rem; font-weight: bold; color: var(--accent); margin: 0; }
-        .sku-text { font-size: 0.9rem; color: var(--text-dim); margin: 0; }
+        .marbete-text { font-size: 1.6rem; font-weight: bold; color: var(--accent); margin: 0; }
+        .sku-text { font-size: 0.85rem; color: var(--text-dim); margin: 0; }
 
-        .actions { display: flex; gap: 8px; }
-
-        .btn-action {
-            border: none; border-radius: 10px; padding: 10px 12px;
-            font-weight: bold; font-size: 0.7rem; cursor: pointer; color: white;
-            transition: opacity 0.2s;
+        .actions { display: flex; gap: 6px; }
+        .btn {
+            border: none; border-radius: 8px; padding: 10px 8px;
+            font-weight: bold; font-size: 0.65rem; cursor: pointer; color: white;
         }
-        .btn-action:active { opacity: 0.7; }
-        .btn-returned { background: #475569; } /* Gris */
-        .btn-sold { background: var(--danger); } /* Rojo */
+        .btn-dev { background: #475569; }
+        .btn-ven { background: var(--danger); }
 
-        /* Estado Vendido */
-        .item-sold { border-left-color: var(--success); }
-        .item-sold .marbete-text { color: var(--success); }
+        .item-sold { border-left-color: var(--success) !important; opacity: 0.8; }
     </style>
 </head>
 <body>
 
     <div class="container">
         <div class="search-section">
-            <h2 style="margin:0 0 15px 0; font-size: 1.1rem; text-align: center;">Buscador de Calzado</h2>
+            <h2 style="margin:0 0 15px 0; font-size: 1.1rem; text-align: center;">🔍 Buscador de Bodega</h2>
             <div class="input-group">
-                <input type="text" id="skuInput" placeholder="Escanea o escribe SKU..." autocomplete="off">
+                <input type="text" id="skuInput" placeholder="Escribe SKU..." autocomplete="off">
                 <button id="searchBtn">IR</button>
             </div>
         </div>
 
-        <div class="list-title">Lista de Trabajo (Session)</div>
-        <div id="listaBusquedas">
-            </div>
+        <div class="list-title">ZAPATOS EN LISTA</div>
+        <div id="listaBusquedas"></div>
     </div>
 
     <script type="module">
@@ -108,18 +96,90 @@
         const searchBtn = document.getElementById('searchBtn');
         const listaBusquedas = document.getElementById('listaBusquedas');
 
-        // FUNCIÓN BUSCAR
-        async function buscar() {
+        // FUNCIÓN DE BÚSQUEDA
+        async function ejecutarBusqueda() {
             const val = skuInput.value.trim().toUpperCase();
-            if(!val) return;
+            if (!val) return;
 
             try {
                 const q = query(collection(db, "calzado"), where("sku", "==", val));
                 const snap = await getDocs(q);
 
-                if(snap.empty) {
+                if (snap.empty) {
                     alert("No se encontró el SKU: " + val);
                 } else {
                     snap.forEach(d => {
-                        const item = d.data();
-                        crearTarjetaHTML(d.id, item.sku, item.mar
+                        const data = d.data();
+                        renderizarTarjeta(d.id, data.sku, data.marbete);
+                    });
+                }
+                skuInput.value = "";
+                skuInput.focus();
+            } catch (error) {
+                console.error(error);
+                alert("Error de conexión con la base de datos.");
+            }
+        }
+
+        function renderizarTarjeta(id, sku, marbete) {
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            card.id = `card-${id}`;
+            card.innerHTML = `
+                <div class="info">
+                    <p class="marbete-text">📍 ${marbete}</p>
+                    <p class="sku-text">SKU: ${sku}</p>
+                </div>
+                <div class="actions">
+                    <button class="btn btn-dev" onclick="accionDevolver('${id}')">🔄 DEVUELTO</button>
+                    <button class="btn btn-ven" onclick="accionVender('${id}', '${sku}', '${marbete}')">💰 VENDIDO</button>
+                </div>
+            `;
+            listaBusquedas.prepend(card);
+        }
+
+        // REGISTRO DE FUNCIONES GLOBALES (Para que funcionen los onclick)
+        window.accionDevolver = (id) => {
+            const card = document.getElementById(`card-${id}`);
+            if (card) {
+                card.style.animation = "fadeOut 0.3s forwards";
+                setTimeout(() => card.remove(), 300);
+            }
+        };
+
+        window.accionVender = async (id, sku, marbete) => {
+            if (!confirm(`¿Confirmar venta de ${sku}?`)) return;
+
+            try {
+                // 1. Borrar de Firebase
+                await deleteDoc(doc(db, "calzado", id));
+
+                // 2. Intentar guardar historial
+                addDoc(collection(db, "historial"), {
+                    sku, marbete, tipo: 'VENDIDO', fecha: serverTimestamp()
+                }).catch(() => {});
+
+                // 3. Feedback visual
+                const card = document.getElementById(`card-${id}`);
+                if (card) {
+                    card.classList.add('item-sold');
+                    card.innerHTML = `<div style="padding:10px; color:var(--success); font-weight:bold;">✅ VENDIDO Y ELIMINADO</div>`;
+                    setTimeout(() => {
+                        card.style.animation = "fadeOut 0.5s forwards";
+                        setTimeout(() => card.remove(), 500);
+                    }, 1500);
+                }
+            } catch (e) {
+                alert("Error al procesar la venta. Revisa las reglas de Firebase.");
+            }
+        };
+
+        // Listeners
+        searchBtn.addEventListener('click', ejecutarBusqueda);
+        skuInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') ejecutarBusqueda();
+        });
+
+    </script>
+</body>
+</html>
