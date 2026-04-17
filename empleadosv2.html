@@ -3,35 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador Empleados - Pro</title>
+    <title>Buscador Empleados con Historial</title>
     <style>
         body { background-color: #0f172a; color: #e2e8f0; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .container { width: 100%; max-width: 400px; text-align: center; }
-        input { width: 80%; padding: 15px; border-radius: 10px; border: 1px solid #334155; background: #1e293b; color: white; font-size: 18px; margin-bottom: 10px; }
-        button { padding: 15px 25px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; }
-        #searchBtn { background-color: #38bdf8; color: #0f172a; width: 88%; }
+        .container { width: 100%; max-width: 500px; text-align: center; }
         
-        .result-card { background: #1e293b; padding: 20px; border-radius: 15px; margin-top: 20px; border-left: 5px solid #38bdf8; text-align: left; position: relative; }
-        .sku-title { font-size: 14px; color: #94a3b8; margin: 0; }
-        .marbete-val { font-size: 28px; color: #f1f5f9; margin: 5px 0; font-weight: bold; }
-        
-        .sold-btn { 
-            background-color: #ef4444; color: white; width: 100%; margin-top: 15px;
-            font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px;
-        }
-        
-        #status { margin-top: 15px; font-size: 14px; }
+        /* Buscador */
+        .search-box { background: #1e293b; padding: 20px; border-radius: 15px; border: 1px solid #334155; margin-bottom: 20px; }
+        input { width: 80%; padding: 12px; border-radius: 8px; border: 1px solid #475569; background: #0f172a; color: white; margin-bottom: 10px; }
+        #searchBtn { background: #38bdf8; color: #0f172a; padding: 12px 20px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; width: 85%; }
+
+        /* Tarjeta de Resultado */
+        .result-card { background: #1e293b; padding: 15px; border-radius: 12px; border-left: 5px solid #38bdf8; text-align: left; margin-bottom: 25px; }
+        .sold-btn { background: #ef4444; color: white; border: none; padding: 10px; border-radius: 6px; width: 100%; cursor: pointer; margin-top: 10px; font-weight: bold; }
+
+        /* Tabla de Historial Reciente */
+        .history-section { width: 100%; margin-top: 30px; text-align: left; }
+        .history-section h3 { color: #94a3b8; font-size: 16px; border-bottom: 1px solid #334155; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { color: #64748b; text-align: left; padding: 8px; }
+        td { padding: 10px 8px; border-bottom: 1px solid #1e293b; }
+        .status-tag { padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; }
+        .tag-busqueda { background: #0ea5e9; color: white; }
+        .tag-venta { background: #22c55e; color: white; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>🔍 Buscador</h1>
-        <input type="text" id="skuInput" placeholder="Escanea o escribe SKU..." autocomplete="off">
-        <button id="searchBtn">BUSCAR UBICACIÓN</button>
+        <div class="search-box">
+            <h1>🔍 Buscador</h1>
+            <input type="text" id="skuInput" placeholder="SKU del calzado..." autocomplete="off">
+            <button id="searchBtn">BUSCAR Y REGISTRAR</button>
+        </div>
 
         <div id="resultArea"></div>
-        <div id="status"></div>
+
+        <div class="history-section">
+            <h3>Actividad Reciente (Hoy)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>SKU</th>
+                        <th>Ubicación</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody id="historyTableBody">
+                    </tbody>
+            </table>
+        </div>
     </div>
 
     <script type="module">
@@ -45,7 +66,7 @@
         };
 
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, serverTimestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
@@ -53,7 +74,10 @@
         const skuInput = document.getElementById('skuInput');
         const searchBtn = document.getElementById('searchBtn');
         const resultArea = document.getElementById('resultArea');
-        const statusDiv = document.getElementById('status');
+        const historyTableBody = document.getElementById('historyTableBody');
+
+        // Cargar historial al abrir la página
+        actualizarTablaHistorial();
 
         searchBtn.addEventListener('click', buscarSKU);
 
@@ -62,59 +86,71 @@
             if (!valor) return;
 
             resultArea.innerHTML = "Buscando...";
-            statusDiv.innerText = "";
 
             try {
                 const q = query(collection(db, "calzado"), where("sku", "==", valor));
                 const snapshot = await getDocs(q);
 
                 if (snapshot.empty) {
-                    resultArea.innerHTML = "❌ No encontrado";
-                    // Registrar búsqueda fallida también es útil
-                    registrarEnHistorial(valor, "No encontrado", "busqueda_fallida");
+                    resultArea.innerHTML = "<p style='color:#f87171'>❌ No encontrado en inventario</p>";
                 } else {
                     resultArea.innerHTML = "";
                     snapshot.forEach(docSnap => {
                         const data = docSnap.data();
                         const id = docSnap.id;
                         
-                        // Crear tarjeta de resultado
                         const card = document.createElement('div');
                         card.className = 'result-card';
                         card.innerHTML = `
-                            <p class="sku-title">SKU: ${data.sku}</p>
-                            <p class="marbete-val">📍 ${data.marbete}</p>
+                            <p style="margin:0; font-size:12px; color:#94a3b8">RESULTADO:</p>
+                            <h2 style="margin:5px 0; color:#38bdf8">📍 Marbete: ${data.marbete}</h2>
+                            <p style="margin:0; font-size:14px">SKU: ${data.sku}</p>
                             <button class="sold-btn" data-id="${id}" data-sku="${data.sku}" data-marbete="${data.marbete}">
-                                💰 MARCAR VENDIDO
+                                Marcar como VENDIDO
                             </button>
                         `;
                         resultArea.appendChild(card);
-
-                        // Registrar en historial que se encontró
-                        registrarEnHistorial(data.sku, data.marbete, "consultado");
+                        
+                        registrarEnHistorial(data.sku, data.marbete, "busqueda");
                     });
 
-                    // Activar botones de "Vendido"
                     document.querySelectorAll('.sold-btn').forEach(btn => {
                         btn.addEventListener('click', marcarComoVendido);
                     });
                 }
-            } catch (e) {
-                console.error(e);
-                statusDiv.innerText = "Error en la búsqueda";
-            }
+            } catch (e) { console.error(e); }
         }
 
-        async function registrarEnHistorial(sku, marbete, accion) {
+        async function registrarEnHistorial(sku, marbete, tipo) {
             try {
                 await addDoc(collection(db, "historial"), {
-                    sku: sku,
-                    marbete: marbete,
-                    accion: accion, // "consultado", "vendido", "busqueda_fallida"
-                    fecha: serverTimestamp(),
-                    usuario: "empleado_piso" // Opcional por ahora
+                    sku, marbete, tipo, fecha: serverTimestamp()
                 });
-            } catch (e) { console.log("Error historial:", e); }
+                actualizarTablaHistorial();
+            } catch (e) { console.error(e); }
+        }
+
+        async function actualizarTablaHistorial() {
+            try {
+                // Traer los últimos 10 movimientos
+                const qH = query(collection(db, "historial"), orderBy("fecha", "desc"), limit(10));
+                const snapH = await getDocs(qH);
+                
+                historyTableBody.innerHTML = "";
+                snapH.forEach(d => {
+                    const h = d.data();
+                    const row = document.createElement('tr');
+                    const claseTag = h.tipo === 'busqueda' ? 'tag-busqueda' : 'tag-venta';
+                    const textoTag = h.tipo === 'busqueda' ? 'BUSCADO' : 'VENDIDO';
+                    
+                    row.innerHTML = `
+                        <td>${h.sku}</td>
+                        <td>${h.marbete}</td>
+                        <td><span class="status-tag ${claseTag}">${textoTag}</span></td>
+                    `;
+                    historyTableBody.appendChild(row);
+                });
+            } catch (e) { console.error("Error al cargar historial:", e); }
         }
 
         async function marcarComoVendido(e) {
@@ -122,22 +158,14 @@
             const sku = e.target.getAttribute('data-sku');
             const marbete = e.target.getAttribute('data-marbete');
 
-            if (!confirm(`¿Confirmar venta del SKU ${sku}? Se borrará del sistema.`)) return;
+            if (!confirm(`¿Confirmar venta de SKU ${sku}?`)) return;
 
             try {
-                // 1. Borrar de la colección principal
                 await deleteDoc(doc(db, "calzado", id));
-                
-                // 2. Registrar la venta en el historial
-                await registrarEnHistorial(sku, marbete, "vendido");
-
-                alert("Venta registrada. Inventario actualizado.");
-                resultArea.innerHTML = ""; // Limpiar resultados
+                await registrarEnHistorial(sku, marbete, "venta");
+                resultArea.innerHTML = "<p style='color:#4ade80'>✅ Venta registrada</p>";
                 skuInput.value = "";
-            } catch (e) {
-                alert("Error al procesar venta");
-                console.error(e);
-            }
+            } catch (e) { console.error(e); }
         }
     </script>
 </body>
