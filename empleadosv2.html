@@ -1,24 +1,25 @@
-
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador Bodega Real-Time</title>
+    <title>Buscador Acumulativo - Bodega</title>
     <style>
         :root {
             --bg: #0f172a; --card: #1e293b; --accent: #38bdf8;
-            --error: #f87171; --success: #22c55e; --text-dim: #94a3b8;
+            --success: #22c55e; --text-dim: #94a3b8;
         }
         body { 
             background-color: var(--bg); color: #f1f5f9; 
-            font-family: system-ui, sans-serif; display: flex; 
-            flex-direction: column; align-items: center; padding: 15px; margin: 0;
+            font-family: system-ui, sans-serif; padding: 15px; margin: 0;
+            display: flex; flex-direction: column; align-items: center;
         }
         .container { width: 100%; max-width: 450px; }
+        
+        /* Buscador */
         .search-section {
             background: var(--card); padding: 20px; border-radius: 20px;
-            margin-bottom: 20px; border: 1px solid #334155;
+            margin-bottom: 20px; border: 1px solid #334155; position: sticky; top: 10px; z-index: 10;
         }
         .input-group { display: flex; gap: 8px; }
         input { 
@@ -29,25 +30,32 @@
             background: var(--accent); color: #0f172a; border: none; 
             border-radius: 12px; padding: 0 20px; font-weight: bold; cursor: pointer;
         }
-        .result-container { margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
-        .result-card { 
-            background: #161e2e; padding: 15px; border-radius: 15px; 
-            border-left: 4px solid var(--accent); display: flex; 
-            justify-content: space-between; align-items: center;
+
+        /* Lista de Acumulados */
+        .list-title { color: var(--text-dim); font-size: 0.8rem; margin-bottom: 10px; padding-left: 5px; }
+        #listaBusquedas { display: flex; flex-direction: column; gap: 12px; }
+
+        .item-card { 
+            background: var(--card); padding: 15px; border-radius: 15px; 
+            border-left: 5px solid var(--accent);
+            display: flex; justify-content: space-between; align-items: center;
+            animation: slideIn 0.3s ease;
         }
-        .sold-btn { 
+
+        @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+
+        .info { flex: 1; }
+        .marbete-text { font-size: 1.4rem; font-weight: bold; color: var(--accent); margin: 0; }
+        .sku-text { font-size: 0.9rem; color: var(--text-dim); margin: 0; }
+
+        .btn-sold { 
             background: #ef4444; color: white; border: none; 
-            padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer;
+            padding: 10px 15px; border-radius: 10px; font-weight: bold; cursor: pointer;
+            margin-left: 10px;
         }
-        .history-card {
-            background: var(--card); border-radius: 20px; padding: 15px; border: 1px solid #334155;
-        }
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; color: var(--text-dim); font-size: 0.75rem; padding: 10px; }
-        td { padding: 12px 10px; border-top: 1px solid #334155; font-size: 0.9rem; }
-        .tag { font-size: 0.65rem; padding: 4px 8px; border-radius: 6px; font-weight: bold; }
-        .tag-search { background: rgba(56, 189, 248, 0.1); color: var(--accent); border: 1px solid var(--accent); }
-        .tag-sold { background: rgba(34, 197, 94, 0.1); color: var(--success); border: 1px solid var(--success); }
+
+        /* Estilo para items ya vendidos en la lista */
+        .item-sold { border-left-color: var(--success); opacity: 0.6; pointer-events: none; }
     </style>
 </head>
 <body>
@@ -56,30 +64,19 @@
         <div class="search-section">
             <h2 style="margin:0 0 15px 0; font-size: 1.1rem; text-align: center;">Buscador de Calzado</h2>
             <div class="input-group">
-                <input type="text" id="skuInput" placeholder="Escribe o escanea SKU..." autocomplete="off">
+                <input type="text" id="skuInput" placeholder="Escribe SKU..." autocomplete="off">
                 <button id="searchBtn">IR</button>
             </div>
         </div>
 
-        <div id="resultArea" class="result-container"></div>
-
-        <div class="history-card">
-            <h3 style="font-size: 0.85rem; margin-bottom: 12px; color: var(--text-dim);">HISTORIAL EN TIEMPO REAL</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>SKU / Marbete</th>
-                        <th style="text-align: right;">Estado</th>
-                    </tr>
-                </thead>
-                <tbody id="historyTableBody"></tbody>
-            </table>
-        </div>
+        <div class="list-title">CALZADO EN MANO / BUSCADO</div>
+        <div id="listaBusquedas">
+            </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBoQEvXvc_XUz7pmaLRXOl-74SRPR5e5i0",
@@ -95,79 +92,71 @@
 
         const skuInput = document.getElementById('skuInput');
         const searchBtn = document.getElementById('searchBtn');
-        const resultArea = document.getElementById('resultArea');
-        const historyTableBody = document.getElementById('historyTableBody');
-
-        // ESCUCHA EN TIEMPO REAL (onSnapshot)
-        // Esto hace que la tabla se actualice SOLA en cuanto hay un cambio en el historial
-        const qHistorial = query(collection(db, "historial"), orderBy("fecha", "desc"), limit(10));
-        onSnapshot(qHistorial, (snapshot) => {
-            historyTableBody.innerHTML = "";
-            snapshot.forEach((d) => {
-                const h = d.data();
-                const tr = document.createElement('tr');
-                const esVendido = h.tipo === 'VENDIDO';
-                tr.innerHTML = `
-                    <td><b>${h.sku}</b><br><small style="color:var(--text-dim)">${h.marbete}</small></td>
-                    <td style="text-align:right">
-                        <span class="tag ${esVendido ? 'tag-sold' : 'tag-search'}">${h.tipo}</span>
-                    </td>
-                `;
-                historyTableBody.appendChild(tr);
-            });
-        });
+        const listaBusquedas = document.getElementById('listaBusquedas');
 
         async function buscar() {
             const val = skuInput.value.trim().toUpperCase();
             if(!val) return;
 
-            resultArea.innerHTML = "<p style='text-align:center'>Buscando...</p>";
-            
             try {
                 const q = query(collection(db, "calzado"), where("sku", "==", val));
                 const snap = await getDocs(q);
-                resultArea.innerHTML = ""; 
 
                 if(snap.empty) {
-                    resultArea.innerHTML = `<div class="result-card" style="border-color:var(--error)">
-                        <p style="margin:0; color:var(--error)">SKU <b>${val}</b> no encontrado.</p>
-                    </div>`;
+                    alert("SKU no encontrado");
                 } else {
                     snap.forEach(d => {
                         const item = d.data();
-                        const card = document.createElement('div');
-                        card.className = 'result-card';
-                        card.innerHTML = `
-                            <div>
-                                <small style="color:var(--text-dim)">UBICACIÓN</small>
-                                <div style="font-size:1.4rem; font-weight:bold; color:var(--accent)">${item.marbete}</div>
-                                <small>${item.sku}</small>
-                            </div>
-                            <button class="sold-btn" onclick="confirmarVenta('${d.id}', '${item.sku}', '${item.marbete}')">
-                                VENDIDO
-                            </button>
-                        `;
-                        resultArea.appendChild(card);
+                        agregarAListaVisual(d.id, item.sku, item.marbete);
                         
-                        // Guardamos en historial
+                        // Opcional: Registrar en la base de datos para tus reportes
                         addDoc(collection(db, "historial"), {
                             sku: item.sku, marbete: item.marbete, tipo: 'BUSCADO', fecha: serverTimestamp()
                         });
                     });
                 }
+                skuInput.value = ""; // Limpiar para la siguiente búsqueda
+                skuInput.focus();
             } catch (e) { console.error(e); }
         }
 
-        window.confirmarVenta = async (id, sku, marbete) => {
-            if(!confirm(`¿Confirmar venta de ${sku} en ${marbete}?`)) return;
+        function agregarAListaVisual(id, sku, marbete) {
+            // Creamos la tarjeta sin borrar lo anterior
+            const card = document.createElement('div');
+            card.className = 'item-card';
+            card.id = `card-${id}`; // ID único para poder modificarla después
+            card.innerHTML = `
+                <div class="info">
+                    <p class="marbete-text">📍 ${marbete}</p>
+                    <p class="sku-text">SKU: ${sku}</p>
+                </div>
+                <button class="btn-sold" onclick="vender('${id}', '${sku}', '${marbete}')">VENDIDO</button>
+            `;
+            // Insertar al principio de la lista (el más nuevo arriba)
+            listaBusquedas.prepend(card);
+        }
+
+        window.vender = async (id, sku, marbete) => {
+            if(!confirm(`¿Confirmar venta de ${sku}?`)) return;
             try {
+                // 1. Borrar de Firebase
                 await deleteDoc(doc(db, "calzado", id));
+                
+                // 2. Registrar venta en historial de Firebase
                 await addDoc(collection(db, "historial"), {
                     sku, marbete, tipo: 'VENDIDO', fecha: serverTimestamp()
                 });
-                resultArea.innerHTML = "";
-                skuInput.value = "";
-            } catch (e) { alert("Error al procesar"); }
+
+                // 3. Modificar visualmente la tarjeta en la lista
+                const card = document.getElementById(`card-${id}`);
+                card.classList.add('item-sold');
+                card.innerHTML = `
+                    <div class="info">
+                        <p class="marbete-text">💰 VENDIDO</p>
+                        <p class="sku-text">SKU: ${sku} (Era de ${marbete})</p>
+                    </div>
+                `;
+            } catch (e) { alert("Error al procesar venta"); }
         };
 
         searchBtn.addEventListener('click', buscar);
