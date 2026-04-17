@@ -3,15 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cargador Masivo Pro</title>
+    <title>Cargador Masivo Pro - Control de Datos</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
-        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --success: #22c55e; }
+        :root { --bg: #0f172a; --card: #1e293b; --accent: #38bdf8; --success: #22c55e; --danger: #ef4444; }
         body { background: var(--bg); color: #fff; font-family: sans-serif; display: flex; justify-content: center; padding: 20px; }
         .box { background: var(--card); padding: 30px; border-radius: 20px; width: 100%; max-width: 400px; border: 1px solid #334155; }
         .drop-zone { border: 2px dashed #334155; padding: 20px; text-align: center; border-radius: 15px; margin: 20px 0; }
-        button { width: 100%; padding: 15px; border-radius: 12px; border: none; background: var(--accent); font-weight: bold; cursor: pointer; }
-        button:disabled { background: #475569; }
+        
+        button { width: 100%; padding: 15px; border-radius: 12px; border: none; font-weight: bold; cursor: pointer; margin-bottom: 10px; transition: 0.3s; }
+        .btn-up { background: var(--accent); color: #0f172a; }
+        .btn-up:disabled { background: #475569; color: #94a3b8; }
+        .btn-clear { background: transparent; color: var(--danger); border: 1px solid var(--danger); font-size: 0.7rem; }
+        .btn-clear:hover { background: var(--danger); color: white; }
+
         .stats { margin-top: 20px; background: #0f172a; padding: 15px; border-radius: 12px; display: none; }
         .progress { width: 100%; height: 8px; background: #334155; border-radius: 4px; margin-top: 10px; overflow: hidden; }
         #bar { width: 0%; height: 100%; background: var(--accent); transition: 0.2s; }
@@ -19,23 +24,30 @@
 </head>
 <body>
     <div class="box">
-        <h2 style="text-align:center; color:var(--accent)">Carga Ortodoxa</h2>
-        <p style="font-size: 0.8rem; text-align: center; color: #94a3b8;">Columnas: <b>sku</b>, <b>marbete</b>, <b>marca</b></p>
+        <h2 style="text-align:center; color:var(--accent); margin-bottom: 5px;">Carga Ortodoxa</h2>
+        <p style="font-size: 0.7rem; text-align: center; color: #94a3b8; margin-bottom: 20px;">Cada carga se suma a lo existente a menos que limpies la base.</p>
+        
         <div class="drop-zone">
             <input type="file" id="fileIn" accept=".xlsx, .xls">
         </div>
-        <button id="upBtn" disabled>INICIAR CARGA</button>
+
+        <button id="upBtn" class="btn-up" disabled>INICIAR SUBIDA</button>
+        
         <div id="statBox" class="stats">
-            <div style="display:flex; justify-content:space-between"><span>Registros:</span> <b id="total">0</b></div>
-            <div style="display:flex; justify-content:space-between"><span>Subidos:</span> <b id="proc">0</b></div>
+            <div style="display:flex; justify-content:space-between"><span>Registros en Excel:</span> <b id="total">0</b></div>
+            <div style="display:flex; justify-content:space-between"><span>Subidos ahora:</span> <b id="proc">0</b></div>
             <div class="progress"><div id="bar"></div></div>
         </div>
-        <p id="msg" style="text-align:center; font-size:0.8rem; margin-top:15px;"></p>
+
+        <hr style="border: 0; border-top: 1px solid #334155; margin: 20px 0;">
+        
+        <button id="clearBtn" class="btn-clear">⚠️ BORRAR TODO EL INVENTARIO ACTUAL</button>
+        <p id="msg" style="text-align:center; font-size:0.8rem; margin-top:10px;"></p>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, writeBatch, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBoQEvXvc_XUz7pmaLRXOl-74SRPR5e5i0",
@@ -50,6 +62,7 @@
         const db = getFirestore(app);
         let data = [];
 
+        // Leer Excel
         document.getElementById('fileIn').addEventListener('change', (e) => {
             const reader = new FileReader();
             reader.onload = (ex) => {
@@ -59,14 +72,33 @@
                     document.getElementById('upBtn').disabled = false;
                     document.getElementById('statBox').style.display = 'block';
                     document.getElementById('total').innerText = data.length;
+                    document.getElementById('msg').innerText = "Archivo listo.";
                 }
             };
             reader.readAsBinaryString(e.target.files[0]);
         });
 
+        // FUNCIÓN PARA BORRAR TODO
+        document.getElementById('clearBtn').addEventListener('click', async () => {
+            if(!confirm("¿ESTÁS SEGURO? Esto borrará TODO el inventario de la base de datos para dejarla en cero.")) return;
+            
+            document.getElementById('msg').innerText = "Limpiando base de datos... por favor espera.";
+            const querySnapshot = await getDocs(collection(db, "calzado"));
+            
+            // Usamos batch para borrar de 500 en 500 (límite de Firebase)
+            const deletePromises = querySnapshot.docs.map(d => deleteDoc(doc(db, "calzado", d.id)));
+            await Promise.all(deletePromises);
+            
+            document.getElementById('msg').innerHTML = "<b style='color:var(--success)'>BASE DE DATOS VACÍA. Lista para carga nueva.</b>";
+            alert("Inventario borrado por completo.");
+        });
+
+        // Subir Datos
         document.getElementById('upBtn').addEventListener('click', async () => {
             document.getElementById('upBtn').disabled = true;
+            document.getElementById('msg').innerText = "Subiendo datos...";
             let c = 0;
+            
             for(const i of data) {
                 if(i.sku && i.marbete) {
                     await addDoc(collection(db, "calzado"), {
@@ -80,8 +112,11 @@
                 document.getElementById('proc').innerText = c;
                 document.getElementById('bar').style.width = (c/data.length)*100 + "%";
             }
-            document.getElementById('msg').innerHTML = "<b>¡COMPLETO!</b>";
-            alert("Carga terminada");
+            document.getElementById('msg').innerHTML = "<b style='color:var(--success)'>CARGA FINALIZADA</b>";
+            alert("Se cargaron " + c + " registros.");
+            // Reset de la interfaz
+            document.getElementById('fileIn').value = "";
+            data = [];
         });
     </script>
 </body>
