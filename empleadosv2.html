@@ -1,34 +1,25 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Buscador Bodega v2.0</title>
+    <title>Buscador Bodega Real-Time</title>
     <style>
         :root {
-            --bg: #0f172a;
-            --card: #1e293b;
-            --accent: #38bdf8;
-            --error: #f87171;
-            --success: #22c55e;
-            --text-dim: #94a3b8;
+            --bg: #0f172a; --card: #1e293b; --accent: #38bdf8;
+            --error: #f87171; --success: #22c55e; --text-dim: #94a3b8;
         }
-
         body { 
             background-color: var(--bg); color: #f1f5f9; 
-            font-family: system-ui, -apple-system, sans-serif; 
-            display: flex; flex-direction: column; align-items: center; 
-            padding: 15px; margin: 0;
+            font-family: system-ui, sans-serif; display: flex; 
+            flex-direction: column; align-items: center; padding: 15px; margin: 0;
         }
-
         .container { width: 100%; max-width: 450px; }
-
-        /* Buscador */
         .search-section {
             background: var(--card); padding: 20px; border-radius: 20px;
             margin-bottom: 20px; border: 1px solid #334155;
         }
-
         .input-group { display: flex; gap: 8px; }
         input { 
             flex: 1; padding: 12px; border-radius: 12px; border: 2px solid #334155; 
@@ -38,36 +29,23 @@
             background: var(--accent); color: #0f172a; border: none; 
             border-radius: 12px; padding: 0 20px; font-weight: bold; cursor: pointer;
         }
-
-        /* Área de Resultados Dinámicos */
         .result-container { margin-bottom: 20px; display: flex; flex-direction: column; gap: 10px; }
-        
         .result-card { 
             background: #161e2e; padding: 15px; border-radius: 15px; 
-            border-left: 4px solid var(--accent);
-            display: flex; justify-content: space-between; align-items: center;
-            animation: fadeIn 0.3s ease;
+            border-left: 4px solid var(--accent); display: flex; 
+            justify-content: space-between; align-items: center;
         }
-
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
         .sold-btn { 
             background: #ef4444; color: white; border: none; 
             padding: 10px 15px; border-radius: 8px; font-weight: bold; cursor: pointer;
         }
-
-        /* Tabla de Historial */
         .history-card {
             background: var(--card); border-radius: 20px; padding: 15px; border: 1px solid #334155;
         }
-
         table { width: 100%; border-collapse: collapse; }
         th { text-align: left; color: var(--text-dim); font-size: 0.75rem; padding: 10px; }
         td { padding: 12px 10px; border-top: 1px solid #334155; font-size: 0.9rem; }
-
-        .tag {
-            font-size: 0.65rem; padding: 4px 8px; border-radius: 6px; font-weight: bold;
-        }
+        .tag { font-size: 0.65rem; padding: 4px 8px; border-radius: 6px; font-weight: bold; }
         .tag-search { background: rgba(56, 189, 248, 0.1); color: var(--accent); border: 1px solid var(--accent); }
         .tag-sold { background: rgba(34, 197, 94, 0.1); color: var(--success); border: 1px solid var(--success); }
     </style>
@@ -86,7 +64,7 @@
         <div id="resultArea" class="result-container"></div>
 
         <div class="history-card">
-            <h3 style="font-size: 0.85rem; margin-bottom: 12px; color: var(--text-dim);">HISTORIAL DE HOY</h3>
+            <h3 style="font-size: 0.85rem; margin-bottom: 12px; color: var(--text-dim);">HISTORIAL EN TIEMPO REAL</h3>
             <table>
                 <thead>
                     <tr>
@@ -101,7 +79,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, serverTimestamp, orderBy, limit } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, query, where, getDocs, addDoc, deleteDoc, doc, serverTimestamp, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyBoQEvXvc_XUz7pmaLRXOl-74SRPR5e5i0",
@@ -120,12 +98,12 @@
         const resultArea = document.getElementById('resultArea');
         const historyTableBody = document.getElementById('historyTableBody');
 
-        // Función para actualizar historial visual
-        async function cargarHistorial() {
-            const q = query(collection(db, "historial"), orderBy("fecha", "desc"), limit(10));
-            const snap = await getDocs(q);
+        // ESCUCHA EN TIEMPO REAL (onSnapshot)
+        // Esto hace que la tabla se actualice SOLA en cuanto hay un cambio en el historial
+        const qHistorial = query(collection(db, "historial"), orderBy("fecha", "desc"), limit(10));
+        onSnapshot(qHistorial, (snapshot) => {
             historyTableBody.innerHTML = "";
-            snap.forEach(d => {
+            snapshot.forEach((d) => {
                 const h = d.data();
                 const tr = document.createElement('tr');
                 const esVendido = h.tipo === 'VENDIDO';
@@ -137,10 +115,7 @@
                 `;
                 historyTableBody.appendChild(tr);
             });
-        }
-
-        // Ejecutar al cargar
-        cargarHistorial();
+        });
 
         async function buscar() {
             const val = skuInput.value.trim().toUpperCase();
@@ -151,15 +126,13 @@
             try {
                 const q = query(collection(db, "calzado"), where("sku", "==", val));
                 const snap = await getDocs(q);
-
-                resultArea.innerHTML = ""; // Limpiar mensaje de carga
+                resultArea.innerHTML = ""; 
 
                 if(snap.empty) {
                     resultArea.innerHTML = `<div class="result-card" style="border-color:var(--error)">
                         <p style="margin:0; color:var(--error)">SKU <b>${val}</b> no encontrado.</p>
                     </div>`;
                 } else {
-                    // SI HAY VARIOS MARBETES, ESTE LOOP LOS MUESTRA TODOS
                     snap.forEach(d => {
                         const item = d.data();
                         const card = document.createElement('div');
@@ -175,33 +148,30 @@
                             </button>
                         `;
                         resultArea.appendChild(card);
-                        // Registrar cada ubicación encontrada en el historial
-                        registrarHistorial(item.sku, item.marbete, 'BUSCADO');
+                        
+                        // Guardamos en historial
+                        addDoc(collection(db, "historial"), {
+                            sku: item.sku, marbete: item.marbete, tipo: 'BUSCADO', fecha: serverTimestamp()
+                        });
                     });
                 }
             } catch (e) { console.error(e); }
-        }
-
-        async function registrarHistorial(sku, marbete, tipo) {
-            await addDoc(collection(db, "historial"), {
-                sku, marbete, tipo, fecha: serverTimestamp()
-            });
-            cargarHistorial();
         }
 
         window.confirmarVenta = async (id, sku, marbete) => {
             if(!confirm(`¿Confirmar venta de ${sku} en ${marbete}?`)) return;
             try {
                 await deleteDoc(doc(db, "calzado", id));
-                await registrarHistorial(sku, marbete, 'VENDIDO');
-                resultArea.innerHTML = ""; // Limpiar tras vender
+                await addDoc(collection(db, "historial"), {
+                    sku, marbete, tipo: 'VENDIDO', fecha: serverTimestamp()
+                });
+                resultArea.innerHTML = "";
                 skuInput.value = "";
             } catch (e) { alert("Error al procesar"); }
         };
 
         searchBtn.addEventListener('click', buscar);
         skuInput.addEventListener('keypress', (e) => { if(e.key === 'Enter') buscar(); });
-
     </script>
 </body>
 </html>
